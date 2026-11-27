@@ -3,6 +3,7 @@ package com.example.skill_exchange;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -15,6 +16,7 @@ class StudentServiceTests {
 
     @Autowired StudentService students;
     @Autowired SwapService swaps;
+    @Autowired JwtService jwt;
 
     private Student student(String name, String email) {
         return students.registerStudent(name, email);
@@ -65,10 +67,50 @@ class StudentServiceTests {
         assertThrows(IllegalArgumentException.class,
                 () -> swaps.create(a.getId(), b.getId(), "java", "figma"));   // duplicate
         assertThrows(IllegalArgumentException.class,
-                () -> swaps.updateStatus(swap.id(), SwapStatus.COMPLETED));   // must accept first
+                () -> swaps.updateStatus(swap.id(), b.getId(), SwapStatus.COMPLETED));   // must accept first
+        assertThrows(ForbiddenException.class,
+                () -> swaps.updateStatus(swap.id(), a.getId(), SwapStatus.ACCEPTED));    // requester can't accept own request
 
-        assertEquals(SwapStatus.ACCEPTED, swaps.updateStatus(swap.id(), SwapStatus.ACCEPTED).status());
-        assertEquals(SwapStatus.COMPLETED, swaps.updateStatus(swap.id(), SwapStatus.COMPLETED).status());
+        assertEquals(SwapStatus.ACCEPTED, swaps.updateStatus(swap.id(), b.getId(), SwapStatus.ACCEPTED).status());
+        assertEquals(SwapStatus.COMPLETED, swaps.updateStatus(swap.id(), a.getId(), SwapStatus.COMPLETED).status());
+    }
+
+    @Test
+    void strangersCannotTouchASwap() {
+        Student a = student("A", "a5@example.com");
+        Student b = student("B", "b5@example.com");
+        Student c = student("C", "c5@example.com");
+        students.addSkill(a.getId(), "java", true);
+        students.addSkill(b.getId(), "sql", true);
+        SwapService.SwapView swap = swaps.create(a.getId(), b.getId(), "java", "sql");
+        assertThrows(ForbiddenException.class,
+                () -> swaps.updateStatus(swap.id(), c.getId(), SwapStatus.ACCEPTED));
+    }
+
+    @Test
+    void loginChecksPasswordAndTokensRoundTrip() {
+        Student s = students.registerStudent("A", "auth@example.com", null, "password123");
+        assertNotEquals("password123", s.getPasswordHash());   // stored hashed, never in plain text
+
+        assertEquals(s.getId(), students.authenticate("AUTH@example.com", "password123").getId());
+        assertThrows(UnauthorizedException.class, () -> students.authenticate("auth@example.com", "wrong-pass"));
+        assertThrows(UnauthorizedException.class, () -> students.authenticate("nobody@example.com", "password123"));
+
+        String token = jwt.issue(s);
+        assertEquals(s.getId(), jwt.parse(token));
+        assertThrows(JwtException.class, () -> jwt.parse(token + "x"));
+    }
+
+    @Test
+    void rejectsShortPasswords() {
+        assertThrows(IllegalArgumentException.class,
+                () -> students.registerStudent("A", "short@example.com", null, "1234567"));
+    }
+
+    @Test
+    void consoleProfilesWithoutPasswordCannotLogIn() {
+        student("Console", "console@example.com");
+        assertThrows(UnauthorizedException.class, () -> students.authenticate("console@example.com", "anything1"));
     }
 
     @Test

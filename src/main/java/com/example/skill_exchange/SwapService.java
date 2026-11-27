@@ -53,17 +53,26 @@ public class SwapService {
                 .stream().map(this::view).toList();
     }
 
-    /** PENDING -> ACCEPTED or REJECTED; ACCEPTED -> COMPLETED. */
+    /**
+     * PENDING -> ACCEPTED or REJECTED (only by the receiver); ACCEPTED -> COMPLETED (either person).
+     */
     @Transactional
-    public SwapView updateStatus(Long swapId, SwapStatus next) {
+    public SwapView updateStatus(Long swapId, Long actorId, SwapStatus next) {
         SwapRequest swap = swaps.findById(swapId)
                 .orElseThrow(() -> new NotFoundException("Swap request not found."));
+        boolean isReceiver = swap.getReceiverId().equals(actorId);
+        if (!isReceiver && !swap.getRequesterId().equals(actorId)) {
+            throw new ForbiddenException("You're not part of this swap.");
+        }
         SwapStatus current = swap.getStatus();
         boolean allowed =
                 (current == SwapStatus.PENDING && (next == SwapStatus.ACCEPTED || next == SwapStatus.REJECTED))
                         || (current == SwapStatus.ACCEPTED && next == SwapStatus.COMPLETED);
         if (!allowed) {
             throw new IllegalArgumentException("A " + current + " request can't become " + next + ".");
+        }
+        if (current == SwapStatus.PENDING && !isReceiver) {
+            throw new ForbiddenException("Only the person who received the request can respond to it.");
         }
         swap.setStatus(next);
         return view(swaps.save(swap));

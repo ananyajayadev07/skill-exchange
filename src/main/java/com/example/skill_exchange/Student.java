@@ -1,5 +1,6 @@
 package com.example.skill_exchange;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.HashSet;
@@ -15,8 +16,13 @@ public class Student {
 
     private String name;
 
+    // Not exposed in JSON: other users shouldn't see each other's emails (see MeView for your own).
+    @JsonIgnore
     @Column(unique = true, nullable = false)
     private String email;
+
+    @JsonIgnore
+    private String passwordHash;
 
     @Column(length = 300)
     private String bio;
@@ -42,6 +48,9 @@ public class Student {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }

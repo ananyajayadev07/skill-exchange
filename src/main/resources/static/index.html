@@ -13,13 +13,12 @@
   <header class="top">
     <div class="wrap bar">
       <h1 class="brand">Skill<span>Swap</span></h1>
-      <div class="who">
-        <label for="me">Using the app as</label>
-        <select id="me"></select>
-        <button class="btn ghost" id="newBtn">New student</button>
+      <div class="who" id="who" hidden>
+        <span id="whoName"></span>
+        <button class="btn ghost small" id="logoutBtn">Log out</button>
       </div>
     </div>
-    <nav class="wrap tabs" id="tabs" aria-label="Sections">
+    <nav class="wrap tabs" id="tabs" aria-label="Sections" hidden>
       <button data-tab="matches" aria-current="page">Matches</button>
       <button data-tab="browse">Browse</button>
       <button data-tab="requests">Requests <b id="badge" hidden></b></button>
@@ -28,19 +27,6 @@
   </header>
 
   <main class="wrap" id="view" aria-live="polite"></main>
-
-  <dialog id="regDialog">
-    <form method="dialog" id="regForm">
-      <h2>Create a student profile</h2>
-      <label>Name <input name="name" required maxlength="80" autocomplete="name"></label>
-      <label>Email <input name="email" type="email" required autocomplete="email"></label>
-      <label>Short bio <textarea name="bio" rows="3" maxlength="300" placeholder="Course, year, what you're after"></textarea></label>
-      <div class="row end">
-        <button type="button" class="btn ghost" data-close>Cancel</button>
-        <button class="btn" type="submit">Create profile</button>
-      </div>
-    </form>
-  </dialog>
 
   <dialog id="swapDialog">
     <form method="dialog" id="swapForm">

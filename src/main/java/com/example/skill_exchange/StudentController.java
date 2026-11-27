@@ -1,11 +1,10 @@
 package com.example.skill_exchange;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,19 +19,9 @@ public class StudentController {
         this.service = service;
     }
 
-    record RegisterRequest(@NotBlank String name,
-                           @NotBlank @Email String email,
-                           @Size(max = 300) String bio) {}
-
     record UpdateRequest(@NotBlank String name, @Size(max = 300) String bio) {}
 
     record SkillRequest(@NotBlank @Size(max = 40) String skill, boolean teaching) {}
-
-    @PostMapping
-    public ResponseEntity<Student> register(@Valid @RequestBody RegisterRequest r) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.registerStudent(r.name(), r.email(), r.bio()));
-    }
 
     /** Optional ?skill=java filters to students who teach or want to learn that skill. */
     @GetMapping
@@ -46,30 +35,36 @@ public class StudentController {
     }
 
     @PutMapping("/{id}")
-    public Student update(@PathVariable Long id, @Valid @RequestBody UpdateRequest r) {
+    public Student update(@PathVariable Long id, @Valid @RequestBody UpdateRequest r, Authentication auth) {
+        Auth.requireSelf(auth, id);
         return service.updateStudent(id, r.name(), r.bio());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, Authentication auth) {
+        Auth.requireSelf(auth, id);
         service.deleteStudent(id);
     }
 
     @PostMapping("/{id}/skills")
-    public Student addSkill(@PathVariable Long id, @Valid @RequestBody SkillRequest r) {
+    public Student addSkill(@PathVariable Long id, @Valid @RequestBody SkillRequest r, Authentication auth) {
+        Auth.requireSelf(auth, id);
         return service.addSkill(id, r.skill(), r.teaching());
     }
 
     @DeleteMapping("/{id}/skills")
     public Student removeSkill(@PathVariable Long id,
                                @RequestParam String skill,
-                               @RequestParam boolean teaching) {
+                               @RequestParam boolean teaching,
+                               Authentication auth) {
+        Auth.requireSelf(auth, id);
         return service.removeSkill(id, skill, teaching);
     }
 
     @GetMapping("/{id}/matches")
-    public List<MatchResult> matches(@PathVariable Long id) {
+    public List<MatchResult> matches(@PathVariable Long id, Authentication auth) {
+        Auth.requireSelf(auth, id);
         return service.findMatchesWithScore(id);
     }
 }

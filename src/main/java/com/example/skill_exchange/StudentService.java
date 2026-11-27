@@ -1,5 +1,6 @@
 package com.example.skill_exchange;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,10 +11,13 @@ public class StudentService {
 
     private final StudentRepository repository;
     private final SwapRepository swapRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public StudentService(StudentRepository repository, SwapRepository swapRepository) {
+    public StudentService(StudentRepository repository, SwapRepository swapRepository,
+                          PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.swapRepository = swapRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     static String normalizeSkill(String skill) {
@@ -34,6 +38,15 @@ public class StudentService {
 
     @Transactional
     public Student registerStudent(String name, String email, String bio) {
+        return registerStudent(name, email, bio, null);
+    }
+
+    /** Registers a student. A null password creates a profile that can't log in (console mode). */
+    @Transactional
+    public Student registerStudent(String name, String email, String bio, String password) {
+        if (password != null && (password.length() < 8 || password.length() > 72)) {
+            throw new IllegalArgumentException("Password must be 8 to 72 characters.");
+        }
         if (name == null || name.isBlank() || email == null || email.isBlank()) {
             throw new IllegalArgumentException("Name and email cannot be empty.");
         }
@@ -46,7 +59,20 @@ public class StudentService {
         }
         Student student = new Student(name.trim(), email);
         student.setBio(bio == null || bio.isBlank() ? null : bio.trim());
+        if (password != null) {
+            student.setPasswordHash(passwordEncoder.encode(password));
+        }
         return repository.save(student);
+    }
+
+    @Transactional(readOnly = true)
+    public Student authenticate(String email, String password) {
+        Student student = repository.findByEmailIgnoreCase(email == null ? "" : email.trim()).orElse(null);
+        if (student == null || student.getPasswordHash() == null || password == null
+                || !passwordEncoder.matches(password, student.getPasswordHash())) {
+            throw new UnauthorizedException("Incorrect email or password.");
+        }
+        return student;
     }
 
     @Transactional(readOnly = true)

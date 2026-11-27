@@ -17,6 +17,16 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, String>> unauthorized(UnauthorizedException e) {
+        return error(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, String>> forbidden(ForbiddenException e) {
+        return error(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, String>> notFound(NotFoundException e) {
         return error(HttpStatus.NOT_FOUND, e.getMessage());
